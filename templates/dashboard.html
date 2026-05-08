@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Finance & Energy Orchestrator</title>
+    <meta name="description" content="Dashboard monitoring keuangan dan energi real-time berbasis MQTT">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --bg: #0a0e1a;
+            --card: rgba(15, 20, 40, 0.85);
+            --border: rgba(99, 102, 241, 0.15);
+            --primary: #818cf8;
+            --accent: #6366f1;
+            --green: #34d399;
+            --yellow: #fbbf24;
+            --red: #f87171;
+            --cyan: #22d3ee;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --glow: 0 0 30px rgba(99, 102, 241, 0.15);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(34, 211, 238, 0.05) 0%, transparent 50%);
+            z-index: 0
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 30px 0 20px;
+            animation: fadeIn .8s
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #818cf8, #22d3ee, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px
+        }
+
+        .header p {
+            color: var(--muted);
+            margin-top: 6px;
+            font-size: .9rem
+        }
+
+        /* Status Bar */
+        .status-bar {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 50px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            font-size: .8rem;
+            backdrop-filter: blur(10px)
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite
+        }
+
+        .dot.green {
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green)
+        }
+
+        .dot.red {
+            background: var(--red);
+            box-shadow: 0 0 8px var(--red)
+        }
+
+        .dot.yellow {
+            background: var(--yellow);
+            box-shadow: 0 0 8px var(--yellow)
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 16px
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))
+        }
+
+        .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--glow);
+            transition: transform .2s, border-color .2s;
+            animation: slideUp .5s ease-out both
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(99, 102, 241, 0.3)
+        }
+
+        .card-title {
+            font-size: .75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .card-value {
+            font-size: 1.8rem;
+            font-weight: 700
+        }
+
+        /* Energy Cards */
+        .energy-device {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background .2s
+        }
+
+        .energy-device:hover {
+            background: rgba(99, 102, 241, 0.08)
+        }
+
+        .device-name {
+            font-weight: 600;
+            font-size: .95rem
+        }
+
+        .device-watt {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--cyan)
+        }
+
+        .device-cost {
+            font-size: .75rem;
+            color: var(--muted)
+        }
+
+        /* Budget Bar */
+        .budget-bar-bg {
+            width: 100%;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 12px 0
+        }
+
+        .budget-bar-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width .8s cubic-bezier(0.4, 0, 0.2, 1), background .5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .7rem;
+            font-weight: 700;
+            min-width: 40px
+        }
+
+        .bar-green {
+            background: linear-gradient(90deg, #059669, #34d399)
+        }
+
+        .bar-yellow {
+            background: linear-gradient(90deg, #d97706, #fbbf24)
+        }
+
+        .bar-red {
+            background: linear-gradient(90deg, #dc2626, #f87171);
+            animation: pulseBar 1.5s infinite
+        }
+
+        /* Subs Table */
+        .subs-table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        .subs-table th {
+            text-align: left;
+            font-size: .7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .subs-table td {
+            padding: 10px 12px;
+            font-size: .85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03)
+        }
+
+        .subs-table tr:hover td {
+            background: rgba(99, 102, 241, 0.05)
+        }
+
+        .badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: .7rem;
+            font-weight: 600
+        }
+
+        .badge-active {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--green)
+        }
+
+        .badge-low {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--red)
+        }
+
+        /* Alerts */
+        .alert-item {
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: .82rem;
+            border-left: 3px solid;
+            animation: slideIn .3s ease-out
+        }
+
+        .alert-budget {
+            background: rgba(248, 113, 113, 0.08);
+            border-color: var(--red);
+            color: var(--red)
+        }
+
+        .alert-warning {
+            background: rgba(251, 191, 36, 0.08);
+            border-color: var(--yellow);
+            color: var(--yellow)
+        }
+
+        .alert-info {
+            background: rgba(34, 211, 238, 0.08);
+            border-color: var(--cyan);
+            color: var(--cyan)
+        }
+
+        .alert-time {
+            font-size: .65rem;
+            color: var(--muted);
+            margin-top: 4px
+        }
+
+        .alerts-scroll {
+            max-height: 300px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) transparent
+        }
+
+        /* Chart */
+        .chart-container {
+            position: relative;
+            height: 250px
+        }
+
+        /* MQTT Info */
+        .mqtt-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px
+        }
+
+        .mqtt-tag {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: .7rem;
+            font-family: monospace;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(99, 102, 241, 0.2)
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0)
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .4
+            }
+        }
+
+        @keyframes pulseBar {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .7
+            }
+        }
+
+        .card:nth-child(2) {
+            animation-delay: .1s
+        }
+
+        .card:nth-child(3) {
+            animation-delay: .2s
+        }
+
+        .card:nth-child(4) {
+            animation-delay: .3s
+        }
+
+        @media(max-width:768px) {
+            .header h1 {
+                font-size: 1.4rem
+            }
+
+            .card-value {
+                font-size: 1.4rem
+            }
+
+            .grid-2,
+            .grid-3,
+            .grid-4 {
+                grid-template-columns: 1fr
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>⚡ Smart Finance & Energy Orchestrator</h1>
+            <p>Real-time monitoring via MQTT • Dashboard berbasis WebSocket</p>
+        </header>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-pill">
+                <span class="dot green" id="mqttDot"></span>
+                <span id="mqttStatus">Menghubungkan...</span>
+            </div>
+            <div class="status-pill">
+                <span class="dot yellow" id="healthDot"></span>
+                <span id="healthStatus">Menunggu data...</span>
+            </div>
+            <div class="status-pill">
+                <span>🕐</span><span id="lastUpdate">-</span>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-4" id="summaryCards">
+            <div class="card">
+                <div class="card-title">⚡ Total Daya</div>
+                <div class="card-value" id="totalWatt">0 W</div>
+            </div>
+            <div class="card">
+                <div class="card-title">💰 Estimasi Energi/bln</div>
+                <div class="card-value" id="totalEnergyCost">Rp 0</div>
+            </div>
+            <div class="card">
+                <div class="card-title">📱 Total Langganan</div>
+                <div class="card-value" id="totalSubsCost">Rp 0</div>
+            </div>
+            <div class="card">
+                <div class="card-title">📊 Budget Terpakai</div>
+                <div class="card-value" id="budgetPercent">0%</div>
+            </div>
+        </div>
+
+        <!-- Budget + Chart -->
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-title">📊 Anggaran Bulanan</div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span id="budgetUsed" style="font-size:.85rem">Rp 0</span>
+                    <span id="budgetLimit" style="font-size:.85rem;color:var(--muted)">/ Rp 500,000</span>
+                </div>
+                <div class="budget-bar-bg">
+                    <div class="budget-bar-fill bar-green" id="budgetBar" style="width:0%">0%</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted)">
+                    <span>Energi: <span id="budgetEnergyPart">Rp 0</span></span>
+                    <span>Subs: <span id="budgetSubsPart">Rp 0</span></span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">📈 Konsumsi Energi Real-time</div>
+                <div class="chart-container"><canvas id="energyChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Energy Devices + Subscriptions -->
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-title">🔌 Perangkat Energi</div>
+                <div id="energyDevices">
+                    <p style="color:var(--muted);font-size:.85rem">Menunggu data perangkat...</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">📱 Status Langganan</div>
+                <div style="overflow-x:auto">
+                    <table class="subs-table">
+                        <thead>
+                            <tr>
+                                <th>Layanan</th>
+                                <th>Jam/bln</th>
+                                <th>Harga</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subsTable">
+                            <tr>
+                                <td colspan="4" style="color:var(--muted)">Menunggu data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts + MQTT Info -->
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-title">🚨 Alert & Notifikasi</div>
+                <div class="alerts-scroll" id="alertsPanel">
+                    <p style="color:var(--muted);font-size:.85rem">Belum ada alert.</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">📡 MQTT Configuration</div>
+                <div style="margin-bottom:12px;font-size:.85rem">
+                    <p><strong>Broker:</strong> localhost:1883</p>
+                    <p><strong>Protocol:</strong> MQTTv5</p>
+                    <p><strong>Keep Alive:</strong> 10 detik</p>
+                </div>
+                <div class="card-title" style="margin-top:8px">Topic Subscriptions (Wildcard +)</div>
+                <div class="mqtt-info">
+                    <span class="mqtt-tag">finansial/energi/+/status</span>
+                    <span class="mqtt-tag">finansial/subs/+/usage</span>
+                    <span class="mqtt-tag">finansial/budget/limit</span>
+                    <span class="mqtt-tag">finansial/system/health</span>
+                    <span class="mqtt-tag">finansial/alerts/warning</span>
+                </div>
+                <div class="card-title" style="margin-top:14px">Fitur MQTT Aktif</div>
+                <div class="mqtt-info">
+                    <span class="mqtt-tag">✅ QoS 0 (Energy)</span>
+                    <span class="mqtt-tag">✅ QoS 1 (Subs)</span>
+                    <span class="mqtt-tag">✅ QoS 2 (Budget)</span>
+                    <span class="mqtt-tag">✅ Retained Msg</span>
+                    <span class="mqtt-tag">✅ LWT</span>
+                    <span class="mqtt-tag">✅ Wildcard +</span>
+                    <span class="mqtt-tag">✅ Keep Alive</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const fmt = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+        const TARIF = 1444.70;
+
+        let energyState = {}, subsState = {}, budgetLimit = 500000;
+        const chartData = {};
+        const MAX_POINTS = 30;
+
+        // Chart.js
+        const ctx = document.getElementById('energyChart').getContext('2d');
+        const COLORS = { PC: '#818cf8', Lampu: '#34d399', AC: '#f87171', Kulkas: '#fbbf24' };
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+                scales: {
+                    x: { display: true, ticks: { color: '#475569', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                    y: { ticks: { color: '#475569', callback: v => v + 'W', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                },
+                animation: { duration: 400 }
+            }
+        });
+
+        function updateChart(device, watt) {
+            if (!chartData[device]) chartData[device] = [];
+            chartData[device].push(watt);
+            if (chartData[device].length > MAX_POINTS) chartData[device].shift();
+
+            const maxLen = Math.max(...Object.values(chartData).map(a => a.length));
+            chart.data.labels = Array.from({ length: maxLen }, (_, i) => i + 1);
+            chart.data.datasets = Object.entries(chartData).map(([d, vals]) => ({
+                label: d, data: vals, borderColor: COLORS[d] || '#818cf8',
+                backgroundColor: (COLORS[d] || '#818cf8') + '20',
+                borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true
+            }));
+            chart.update('none');
+        }
+
+        function updateSummary() {
+            let tw = 0, tec = 0, tsc = 0;
+            Object.values(energyState).forEach(d => { tw += d.watt || 0; tec += (d.biaya_per_jam || 0) * 24 * 30 });
+            Object.values(subsState).forEach(d => { tsc += d.harga_langganan || 0 });
+            const total = tec + tsc, pct = budgetLimit > 0 ? (total / budgetLimit * 100) : 0;
+
+            document.getElementById('totalWatt').textContent = Math.round(tw) + ' W';
+            document.getElementById('totalEnergyCost').textContent = fmt(tec);
+            document.getElementById('totalSubsCost').textContent = fmt(tsc);
+            document.getElementById('budgetPercent').textContent = Math.round(pct) + '%';
+            document.getElementById('budgetPercent').style.color = pct > 100 ? 'var(--red)' : pct > 80 ? 'var(--yellow)' : 'var(--green)';
+
+            document.getElementById('budgetUsed').textContent = fmt(total);
+            document.getElementById('budgetLimit').textContent = '/ ' + fmt(budgetLimit);
+            document.getElementById('budgetEnergyPart').textContent = fmt(tec);
+            document.getElementById('budgetSubsPart').textContent = fmt(tsc);
+
+            const bar = document.getElementById('budgetBar');
+            const w = Math.min(pct, 100);
+            bar.style.width = w + '%'; bar.textContent = Math.round(pct) + '%';
+            bar.className = 'budget-bar-fill ' + (pct > 100 ? 'bar-red' : pct > 80 ? 'bar-yellow' : 'bar-green');
+        }
+
+        function updateDevices() {
+            const el = document.getElementById('energyDevices');
+            if (!Object.keys(energyState).length) return;
+            el.innerHTML = Object.entries(energyState).map(([k, v]) => `
+        <div class="energy-device">
+            <div><div class="device-name">${v.device || k}</div>
+            <div class="device-cost">${fmt(v.biaya_per_jam || 0)}/jam</div></div>
+            <div style="text-align:right"><div class="device-watt">${v.watt || 0} W</div>
+            <div class="device-cost">${((v.watt || 0) / 1000).toFixed(3)} kWh</div></div>
+        </div>`).join('');
+        }
+
+        function updateSubs() {
+            const el = document.getElementById('subsTable');
+            if (!Object.keys(subsState).length) return;
+            el.innerHTML = Object.entries(subsState).map(([k, v]) => {
+                const low = v.status === 'Low Usage';
+                return `<tr><td style="font-weight:600">${v.service || k}</td>
+        <td>${v.jam_per_bulan || 0}</td><td>${fmt(v.harga_langganan || 0)}</td>
+        <td><span class="badge ${low ? 'badge-low' : 'badge-active'}">${v.status || '-'}</span>
+        ${low ? '<div style="font-size:.7rem;color:var(--red);margin-top:2px">' + v.rekomendasi + '</div>' : ''}</td></tr>`;
+            }).join('');
+        }
+
+        function addAlert(a) {
+            const el = document.getElementById('alertsPanel');
+            if (el.querySelector('p')) el.innerHTML = '';
+            const t = a.type || 'INFO';
+            const cls = t.includes('EXCEEDED') || t.includes('OFFLINE') ? 'alert-budget' : t.includes('WARNING') || t.includes('LOW') ? 'alert-warning' : 'alert-info';
+            const time = a.timestamp ? new Date(a.timestamp).toLocaleTimeString('id-ID') : '';
+            el.insertAdjacentHTML('afterbegin', `<div class="alert-item ${cls}"><div>${a.message || JSON.stringify(a)}</div><div class="alert-time">${time}</div></div>`);
+            while (el.children.length > 15) el.removeChild(el.lastChild);
+        }
+
+        function setHealth(d) {
+            const dot = document.getElementById('healthDot');
+            const st = document.getElementById('healthStatus');
+            const s = d.status || '';
+            if (s.includes('Online')) { dot.className = 'dot green'; st.textContent = 'Metering Online' }
+            else { dot.className = 'dot red'; st.textContent = 'Metering Offline ⚠️' }
+        }
+
+        // Socket events
+        socket.on('connect', () => {
+            document.getElementById('mqttDot').className = 'dot green';
+            document.getElementById('mqttStatus').textContent = 'Dashboard Connected';
+        });
+        socket.on('disconnect', () => {
+            document.getElementById('mqttDot').className = 'dot red';
+            document.getElementById('mqttStatus').textContent = 'Disconnected';
+        });
+        socket.on('initial_state', (s) => {
+            if (s.energy) { energyState = s.energy; Object.entries(s.energy).forEach(([k, v]) => updateChart(k, v.watt)); updateDevices() }
+            if (s.subscriptions) { subsState = s.subscriptions; updateSubs() }
+            if (s.budget && s.budget.limit) budgetLimit = s.budget.limit;
+            if (s.health) setHealth(s.health);
+            if (s.alerts) s.alerts.reverse().forEach(addAlert);
+            updateSummary();
+        });
+        socket.on('energy_update', (d) => {
+            energyState[d.device] = d.data; updateChart(d.device, d.data.watt);
+            updateDevices(); updateSummary();
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('id-ID');
+        });
+        socket.on('subs_update', (d) => { subsState[d.service] = d.data; updateSubs(); updateSummary() });
+        socket.on('budget_update', (d) => { if (d.limit) budgetLimit = d.limit; updateSummary() });
+        socket.on('health_update', (d) => { setHealth(d); if (d.status && d.status.includes('Offline')) addAlert({ type: 'SYSTEM_OFFLINE', message: '🔴 Energy Meter OFFLINE!', timestamp: d.timestamp }) });
+        socket.on('alert_update', (d) => { addAlert(d.alert) });
+    </script>
+</body>
+
+</html>
