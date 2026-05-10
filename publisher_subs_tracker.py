@@ -9,6 +9,7 @@
 # ============================================================
 
 import json
+import os
 import random
 import time
 import signal
@@ -24,6 +25,29 @@ from config import (
 
 # ---- Flag untuk graceful shutdown ----
 running = True
+
+# ---- File state jam pemakaian ----
+STATE_FILE = os.path.join(os.path.dirname(__file__), 'subs_usage_state.json')
+
+
+def load_usage_state():
+    """Load jam pemakaian yang tersimpan dari file JSON."""
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, 'r') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_usage_state(state):
+    """Simpan jam pemakaian ke file JSON."""
+    try:
+        with open(STATE_FILE, 'w') as f:
+            json.dump(state, f, indent=2)
+    except Exception as e:
+        print(f"[Subs Tracker] ⚠️  Gagal simpan state: {e}")
 
 
 def signal_handler(sig, frame):
@@ -49,12 +73,15 @@ def on_disconnect(client, userdata, flags, reason_code, properties):
     print(f"[Subs Tracker] ⚠️  Terputus dari broker (kode: {reason_code})")
 
 
-def simulate_usage():
-    """Simulasi jam pemakaian layanan dalam satu bulan."""
+def simulate_usage(persisted_hours):
+    """Simulasi jam pemakaian layanan — akumulasi dari state sebelumnya."""
     usage_data = {}
     for service, info in SUBSCRIPTIONS.items():
-        # Simulasikan pemakaian acak (0 - 30 jam/bulan)
-        jam = round(random.uniform(0, 30), 1)
+        # Tambahkan pemakaian acak (0.1 - 0.5 jam per siklus 10 detik)
+        delta = round(random.uniform(0.1, 0.5), 2)
+        prev  = persisted_hours.get(service, 0.0)
+        jam   = round(min(prev + delta, 744), 1)  # cap 744 jam/bln (31 hari × 24)
+        persisted_hours[service] = jam
         usage_data[service] = {
             "jam_per_bulan": jam,
             "harga": info["harga"],
@@ -99,13 +126,17 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
+    # Load state jam pemakaian yang tersimpan
+    persisted_hours = load_usage_state()
+    print(f"  💾 State tersimpan: {persisted_hours if persisted_hours else 'belum ada (mulai dari 0)'}")
+
     cycle = 0
     try:
         while running:
             cycle += 1
             print(f"\n--- Siklus #{cycle} ({datetime.now().strftime('%H:%M:%S')}) ---")
 
-            usage_data = simulate_usage()
+            usage_data = simulate_usage(persisted_hours)
             total_biaya = 0
 
             for service, data in usage_data.items():
@@ -133,6 +164,9 @@ def main():
                 total_biaya += data["harga"]
 
             print(f"\n  💰 Total biaya langganan: Rp{total_biaya:,}/bulan")
+
+            # Simpan state jam pemakaian
+            save_usage_state(persisted_hours)
 
             # Tunggu 10 detik
             for _ in range(100):
