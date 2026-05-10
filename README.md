@@ -135,12 +135,3 @@ Ikuti menu interaktif untuk set budget.
 - Diset 10 detik (pendek untuk demo)
 - Terlihat di log Mosquitto sebagai PINGREQ/PINGRESP
 
-## 🔔 Telegram (Opsional)
-
-1. Buat bot di Telegram via @BotFather → dapatkan token
-2. Dapatkan chat_id (kirim pesan ke bot, cek via API)
-3. Edit `config.py`:
-```python
-TELEGRAM_BOT_TOKEN = "your_token_here"
-TELEGRAM_CHAT_ID = "your_chat_id"
-```
