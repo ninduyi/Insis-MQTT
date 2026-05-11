@@ -411,6 +411,124 @@
             scrollbar-color: var(--accent) transparent
         }
 
+        /* Budget Manager Form */
+        .budget-form-group {
+            margin-bottom: 14px;
+        }
+        .budget-form-label {
+            display: block;
+            font-size: .75rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .budget-input {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(0, 50, 120, 0.15);
+            border: 1px solid rgba(0, 120, 255, 0.25);
+            color: var(--text);
+            font-size: .95rem;
+            font-family: 'Inter', sans-serif;
+            transition: border-color .2s, box-shadow .2s;
+            outline: none;
+        }
+        .budget-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(59, 158, 255, 0.2);
+        }
+        .budget-input::placeholder { color: var(--muted); }
+        .budget-select {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(0, 50, 120, 0.15);
+            border: 1px solid rgba(0, 120, 255, 0.25);
+            color: var(--text);
+            font-size: .9rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+        }
+        .budget-select option { background: #050d1a; color: var(--text); }
+        .btn-submit {
+            width: 100%;
+            padding: 11px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(0,100,255,0.3), rgba(0,200,255,0.2));
+            border: 1px solid rgba(0, 150, 255, 0.4);
+            color: var(--primary-bright);
+            font-size: .9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s;
+            letter-spacing: 0.5px;
+        }
+        .btn-submit:hover {
+            background: linear-gradient(135deg, rgba(0,100,255,0.5), rgba(0,200,255,0.35));
+            box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-snapshot {
+            padding: 7px 14px;
+            border-radius: 8px;
+            background: rgba(0,229,160,0.1);
+            border: 1px solid rgba(0,229,160,0.3);
+            color: var(--green);
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+            margin-left: auto;
+        }
+        .btn-snapshot:hover { background: rgba(0,229,160,0.2); box-shadow: 0 0 10px rgba(0,229,160,0.25); }
+        .budget-feedback {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: .78rem;
+            display: none;
+            animation: slideIn .3s ease-out;
+        }
+        .feedback-ok  { background: rgba(0,229,160,0.1); color: var(--green); border: 1px solid rgba(0,229,160,0.25); }
+        .feedback-err { background: rgba(255,77,106,0.1); color: var(--red);   border: 1px solid rgba(255,77,106,0.25); }
+
+        /* MQTT Feature Tags Panel */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .feature-item {
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(0, 60, 150, 0.08);
+            border: 1px solid rgba(0, 100, 255, 0.1);
+            font-size: .72rem;
+        }
+        .feature-num {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: .8rem;
+        }
+        .feature-name {
+            font-weight: 600;
+            color: var(--text);
+            display: block;
+            margin: 2px 0 1px;
+        }
+        .feature-impl {
+            color: var(--muted);
+            font-size: .68rem;
+        }
+        .feature-ok { border-color: rgba(0,229,160,0.2); }
+        .feature-ok .feature-num { color: var(--green); }
+
         /* Chart */
         .chart-container {
             position: relative;
@@ -731,11 +849,10 @@
             </div>
         </div>
 
-        <!-- Alerts + MQTT Info -->
+        <!-- Alerts + Finance Summary -->
         <div class="grid grid-2">
             <div class="card">
                 <div class="card-title" style="margin-bottom:10px">
-                    <!-- Bell alert SVG -->
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
                     </svg>
@@ -748,7 +865,6 @@
             </div>
             <div class="card">
                 <div class="card-title">
-                    <!-- Wallet SVG -->
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/>
                     </svg>
@@ -778,7 +894,52 @@
                 <div style="margin-top:10px;font-size:.68rem;color:var(--muted);font-style:italic">* estimasi asumsi 24 jam/hari × 30 hari</div>
             </div>
         </div>
+
+        <!-- Budget Manager (dari Dashboard) -->
+        <div class="grid">
+            <div class="card" style="max-width:680px;margin:0 auto;width:100%">
+                <div class="card-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    Budget &amp; Policy Manager
+                    <span style="margin-left:6px;padding:2px 8px;border-radius:10px;font-size:.65rem;background:rgba(255,204,0,0.1);color:var(--yellow);border:1px solid rgba(255,204,0,0.2)">QoS 2 + Retained</span>
+                </div>
+                <p style="font-size:.78rem;color:var(--muted);margin-bottom:14px">Set batas anggaran bulanan langsung dari browser. Data dikirim ke broker dengan <strong style="color:var(--primary)">QoS 2 (Exactly Once)</strong> dan <strong style="color:var(--green)">Retained Message</strong>.</p>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="budget-form-group" style="margin-bottom:0">
+                        <label class="budget-form-label">Tipe Anggaran</label>
+                        <select class="budget-select" id="budgetType" onchange="toggleCategoryField()">
+                            <option value="total_budget">💰 Total Anggaran Bulanan</option>
+                            <option value="category_budget">📂 Anggaran Per Kategori</option>
+                        </select>
+                    </div>
+                    <div class="budget-form-group" id="categoryField" style="margin-bottom:0;display:none">
+                        <label class="budget-form-label">Kategori</label>
+                        <select class="budget-select" id="budgetCategory">
+                            <option value="energi">⚡ Energi / Listrik</option>
+                            <option value="langganan">📱 Langganan Digital</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="budget-form-group" style="margin-top:12px">
+                    <label class="budget-form-label">Nominal Anggaran (Rp)</label>
+                    <input type="number" class="budget-input" id="budgetAmount"
+                        placeholder="Contoh: 1500000"
+                        min="10000" step="50000"
+                        onkeydown="if(event.key==='Enter')submitBudget()">
+                </div>
+
+                <button class="btn-submit" id="budgetSubmitBtn" onclick="submitBudget()">
+                    🚀 Kirim Budget (QoS 2 + Retained)
+                </button>
+                <div class="budget-feedback" id="budgetFeedback"></div>
+            </div>
+        </div>
     </div>
+
 
     <script>
         const socket = io();
@@ -927,6 +1088,82 @@
             else { dot.className = 'dot red'; st.textContent = 'Metering Offline' }
         }
 
+        // ---- Budget Manager Form Functions ----
+        function toggleCategoryField() {
+            const t = document.getElementById('budgetType').value;
+            document.getElementById('categoryField').style.display = t === 'category_budget' ? 'block' : 'none';
+        }
+
+        async function submitBudget() {
+            const amount = parseInt(document.getElementById('budgetAmount').value);
+            const type = document.getElementById('budgetType').value;
+            const category = document.getElementById('budgetCategory')?.value || '';
+            const btn = document.getElementById('budgetSubmitBtn');
+            const fb = document.getElementById('budgetFeedback');
+
+            if (!amount || amount < 10000) {
+                showFeedback(false, '❌ Masukkan nominal minimal Rp 10.000');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Mengirim (QoS 2 handshake)...';
+
+            try {
+                const res = await fetch('/api/budget', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ limit: amount, type, category })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showFeedback(true, `✅ ${data.message}`);
+                    document.getElementById('budgetAmount').value = '';
+                } else {
+                    showFeedback(false, `❌ ${data.message}`);
+                }
+            } catch (e) {
+                showFeedback(false, '❌ Gagal menghubungi server');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Kirim Budget (QoS 2 + Retained)';
+            }
+        }
+
+        function showFeedback(ok, msg) {
+            const fb = document.getElementById('budgetFeedback');
+            fb.className = 'budget-feedback ' + (ok ? 'feedback-ok' : 'feedback-err');
+            fb.textContent = msg;
+            fb.style.display = 'block';
+            setTimeout(() => { fb.style.display = 'none'; }, 5000);
+        }
+
+        // ---- Request-Response Snapshot ----
+        async function requestSnapshot() {
+            const btn = document.getElementById('snapshotBtn');
+            const result = document.getElementById('snapshotResult');
+            btn.disabled = true;
+            btn.textContent = '⏳ Menunggu response...';
+            result.textContent = '📨 Request dikirim ke Energy Meter publisher...';
+            result.style.color = 'var(--cyan)';
+
+            try {
+                const res = await fetch('/api/snapshot', { method: 'POST' });
+                const data = await res.json();
+                if (!data.success) {
+                    result.textContent = '❌ Gagal kirim request';
+                    result.style.color = 'var(--red)';
+                }
+            } catch (e) {
+                result.textContent = '❌ Error: ' + e.message;
+            } finally {
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = '📸 Req-Resp Snapshot';
+                }, 3000);
+            }
+        }
+
         // Socket events
         socket.on('connect', () => {
             document.getElementById('mqttDot').className = 'dot green';
@@ -951,8 +1188,17 @@
         });
         socket.on('subs_update', (d) => { subsState[d.service] = d.data; updateSubs(); updateSummary() });
         socket.on('budget_update', (d) => { if (d.limit) budgetLimit = d.limit; updateSummary() });
-        socket.on('health_update', (d) => { setHealth(d); if (d.status && d.status.includes('Offline')) addAlert({ type: 'SYSTEM_OFFLINE', message: 'Energy Meter OFFLINE!', timestamp: d.timestamp }) });
+        socket.on('health_update', (d) => { setHealth(d); if (d.status && d.status.includes('Offline')) addAlert({ type: 'SYSTEM_OFFLINE', message: 'Energy Meter OFFLINE! (LWT Triggered)', timestamp: d.timestamp }) });
         socket.on('alert_update', (d) => { addAlert(d.alert) });
+
+        // [FITUR 8: Request-Response] Terima snapshot response dari publisher
+        socket.on('snapshot_response', (d) => {
+            const result = document.getElementById('snapshotResult');
+            const devices = Object.keys(d.data || {});
+            result.textContent = `✅ Snapshot diterima (id:${d.correlation_id}) — ${devices.length} perangkat: ${devices.join(', ')}`;
+            result.style.color = 'var(--green)';
+            addAlert({ type: 'INFO', message: `📸 Snapshot response diterima dari Energy Meter (${devices.join(', ')})`, timestamp: d.timestamp });
+        });
     </script>
 
     <!-- ===== ENERGY PARTICLE CANVAS ANIMATION ===== -->

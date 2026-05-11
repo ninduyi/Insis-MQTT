@@ -2,10 +2,11 @@
 # Publisher 2: Subscription Tracker
 # ============================================================
 # Mensimulasikan durasi pemakaian layanan digital.
-# Jika layanan jarang dibuka → status "Low Usage"
-# Fitur MQTT:
-#   - Retained Message = True (subscriber baru langsung dapat data terakhir)
-#   - QoS 1 (memastikan data sampai)
+# Fitur MQTT v5 yang diimplementasikan:
+#   [1] QoS 1      → At least once, data pemakaian tidak boleh hilang
+#   [5] Retain     → Subscriber baru langsung dapat data terakhir
+#   [4] User Props → Metadata (kategori, region, versi) di tiap pesan
+#   [6] Expiry     → Data subs kedaluwarsa setelah 120 detik
 # ============================================================
 
 import json
@@ -17,10 +18,13 @@ import sys
 from datetime import datetime
 
 import paho.mqtt.client as mqtt
+from paho.mqtt.properties import Properties
+from paho.mqtt.packettypes import PacketTypes
 
 from config import (
     MQTT_BROKER, MQTT_PORT, MQTT_KEEPALIVE,
-    TOPIC_SUBS, SUBSCRIPTIONS, LOW_USAGE_THRESHOLD_HOURS
+    TOPIC_SUBS, SUBSCRIPTIONS, LOW_USAGE_THRESHOLD_HOURS,
+    SUBS_MSG_EXPIRY_SECONDS
 )
 
 # ---- Flag untuk graceful shutdown ----
@@ -64,12 +68,11 @@ def on_connect(client, userdata, flags, reason_code, properties):
 
 
 def on_publish(client, userdata, mid, reason_code, properties):
-    """Callback saat pesan berhasil dikirim (QoS 1 acknowledged)."""
+    """[FITUR 1: QoS 1] Callback konfirmasi PUBACK dari broker."""
     pass
 
 
 def on_disconnect(client, userdata, flags, reason_code, properties):
-    """Callback saat terputus dari broker."""
     print(f"[Subs Tracker] ⚠️  Terputus dari broker (kode: {reason_code})")
 
 
@@ -77,10 +80,9 @@ def simulate_usage(persisted_hours):
     """Simulasi jam pemakaian layanan — akumulasi dari state sebelumnya."""
     usage_data = {}
     for service, info in SUBSCRIPTIONS.items():
-        # Tambahkan pemakaian acak (0.1 - 0.5 jam per siklus 10 detik)
         delta = round(random.uniform(0.1, 0.5), 2)
         prev  = persisted_hours.get(service, 0.0)
-        jam   = round(min(prev + delta, 744), 1)  # cap 744 jam/bln (31 hari × 24)
+        jam   = round(min(prev + delta, 744), 1)
         persisted_hours[service] = jam
         usage_data[service] = {
             "jam_per_bulan": jam,
@@ -98,14 +100,16 @@ def main():
     print("=" * 60)
     print("  PUBLISHER 2: SUBSCRIPTION TRACKER")
     print("=" * 60)
-    print(f"  Broker   : {MQTT_BROKER}:{MQTT_PORT}")
-    print(f"  QoS      : 1 (at least once)")
-    print(f"  Retained : ✅ True (subscriber baru langsung dapat data)")
-    print(f"  Layanan  : {', '.join(SUBSCRIPTIONS.keys())}")
-    print(f"  Threshold: < {LOW_USAGE_THRESHOLD_HOURS} jam/bulan = Low Usage")
+    print(f"  Broker    : {MQTT_BROKER}:{MQTT_PORT}")
+    print(f"  QoS       : 1 (at least once)")
+    print(f"  Retained  : ✅ True")
+    print(f"  User Props: Aktif (kategori, region)")
+    print(f"  Expiry    : {SUBS_MSG_EXPIRY_SECONDS} detik")
+    print(f"  Layanan   : {', '.join(SUBSCRIPTIONS.keys())}")
+    print(f"  Threshold : < {LOW_USAGE_THRESHOLD_HOURS} jam/bulan = Low Usage")
     print("=" * 60)
 
-    # ---- Setup MQTT Client ----
+    # ---- Setup MQTT Client (v5) ----
     client = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id="subs_tracker_pub",
@@ -123,12 +127,10 @@ def main():
         sys.exit(1)
 
     client.loop_start()
-
     signal.signal(signal.SIGINT, signal_handler)
 
-    # Load state jam pemakaian yang tersimpan
     persisted_hours = load_usage_state()
-    print(f"  💾 State tersimpan: {persisted_hours if persisted_hours else 'belum ada (mulai dari 0)'}")
+    print(f"  💾 State: {list(persisted_hours.keys()) if persisted_hours else 'Mulai dari 0'}")
 
     cycle = 0
     try:
@@ -141,6 +143,19 @@ def main():
 
             for service, data in usage_data.items():
                 topic = TOPIC_SUBS.format(service=service)
+
+                # ---- [FITUR 4: User Properties] ----
+                pub_props = Properties(PacketTypes.PUBLISH)
+                pub_props.UserProperty = [
+                    ("publisher_version", "2.0"),
+                    ("kategori", "digital_subscription"),
+                    ("region", "ID"),
+                    ("currency", "IDR"),
+                ]
+
+                # ---- [FITUR 6: Message Expiry] ----
+                pub_props.MessageExpiryInterval = SUBS_MSG_EXPIRY_SECONDS
+
                 payload = json.dumps({
                     "service": service,
                     "jam_per_bulan": data["jam_per_bulan"],
@@ -151,24 +166,19 @@ def main():
                     "timestamp": datetime.now().isoformat()
                 })
 
-                # ---- RETAINED MESSAGE ----
-                # retain=True → broker menyimpan pesan terakhir
-                # Subscriber baru langsung dapat data tanpa menunggu update
-                client.publish(topic, payload, qos=1, retain=True)
+                # ---- [FITUR 1: QoS 1] + [FITUR 5: Retain] ----
+                client.publish(topic, payload, qos=1, retain=True, properties=pub_props)
 
                 status_icon = "🔴" if data["status"] == "Low Usage" else "🟢"
                 print(f"  {status_icon} {service}: {data['jam_per_bulan']} jam/bln "
                       f"| Rp{data['harga']:,} | {data['status']} "
-                      f"| {data['rekomendasi']}")
+                      f"[Expiry:{SUBS_MSG_EXPIRY_SECONDS}s]")
 
                 total_biaya += data["harga"]
 
             print(f"\n  💰 Total biaya langganan: Rp{total_biaya:,}/bulan")
-
-            # Simpan state jam pemakaian
             save_usage_state(persisted_hours)
 
-            # Tunggu 10 detik
             for _ in range(100):
                 if not running:
                     break
